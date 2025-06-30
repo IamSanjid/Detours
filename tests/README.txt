@@ -1,0 +1,1 @@
+Same as the official Detours unit test, just modified to support any-windows-gnu target.

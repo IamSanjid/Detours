@@ -1,0 +1,18 @@
+.{
+    .name = .Detours,
+    .version = "0.0.0",
+    .fingerprint = 0x9c3920ee6aca9a49,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        .Detours = .{
+            .url = "git+https://github.com/microsoft/Detours.git?ref=main#9764cebcb1a75940e68fa83d6730ffaf0f669401",
+            .hash = "N-V-__8AAAfkMgCNRxHobeqrxL6ubJ61-7pLSJ4AdbnP9CJe",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE",
+        "README.md",
+    },
+}
