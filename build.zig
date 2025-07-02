@@ -1,4 +1,7 @@
+const builtin = @import("builtin");
 const std = @import("std");
+
+const is_0_14_01_later = builtin.zig_version.major == 0 and builtin.zig_version.minor > 14;
 
 pub fn build(b: *std.Build) void {
     const upstream = b.dependency("Detours", .{});
@@ -19,12 +22,31 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(detours);
     detours.installHeader(upstream.path("src/detours.h"), "detours.h");
     detours.installHeader(upstream.path("src/detver.h"), "detver.h");
-    detours.addCSourceFiles(.{
+    detours.root_module.addCSourceFiles(.{
         .root = upstream.path("src"),
         .files = detours_source_files,
         .flags = getCCFlags(b, optimize),
         .language = .cpp,
     });
+    switch (target.result.cpu.arch) {
+        .x86 => {
+            detours.root_module.addCMacro("DETOURS_X86", "1");
+        },
+        .x86_64 => {
+            detours.root_module.addCMacro("DETOURS_X64", "1");
+            detours.root_module.addCMacro("DETOURS_64BIT", "1");
+        },
+        .arm => {
+            detours.root_module.addCMacro("DETOURS_ARM", "1");
+        },
+        .aarch64 => {
+            detours.root_module.addCMacro("DETOURS_ARM64", "1");
+            detours.root_module.addCMacro("DETOURS_64BIT", "1");
+        },
+        else => {
+            std.debug.panic("Unsupported CPU architecture: {}", .{target.result.cpu.arch});
+        },
+    }
     if (target.result.abi != .msvc) {
         detours.linkLibCpp();
         if (optimize == .Debug) {
@@ -33,13 +55,24 @@ pub fn build(b: *std.Build) void {
     }
 
     const test_step = b.step("test", "Runs the Detours unit tests");
-    const test_exe = b.addExecutable(.{
+    const test_exe = if (!is_0_14_01_later) b.addExecutable(.{
         .name = "unittests",
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .link_libc = true,
             .sanitize_c = false,
+            .sanitize_thread = false,
+            .stack_check = false,
+            .stack_protector = false,
+        }),
+    }) else b.addExecutable(.{
+        .name = "unittests",
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .sanitize_c = .off,
             .sanitize_thread = false,
             .stack_check = false,
             .stack_protector = false,
@@ -82,7 +115,9 @@ fn getCCFlags(b: *std.Build, optimize: std.builtin.OptimizeMode) []const []const
 
     if (optimize == .Debug) {
         flags.append(b.allocator, "-DDETOUR_DEBUG=1") catch @panic("OOM");
-        flags.append(b.allocator, "-D_DEBUG") catch @panic("OOM");
+        if (!is_0_14_01_later) {
+            flags.append(b.allocator, "-D_DEBUG") catch @panic("OOM");
+        }
     } else {
         flags.append(b.allocator, "-DDETOUR_DEBUG=0") catch @panic("OOM");
     }
@@ -108,7 +143,9 @@ fn getTestCCFlags(b: *std.Build, optimize: std.builtin.OptimizeMode) []const []c
 
     if (optimize == .Debug) {
         flags.append(b.allocator, "-DDETOUR_DEBUG=1") catch @panic("OOM");
-        flags.append(b.allocator, "-D_DEBUG") catch @panic("OOM");
+        if (!is_0_14_01_later) {
+            flags.append(b.allocator, "-D_DEBUG") catch @panic("OOM");
+        }
     } else {
         flags.append(b.allocator, "-DDETOUR_DEBUG=0") catch @panic("OOM");
     }
