@@ -109,6 +109,7 @@ fn getCCFlags(b: *std.Build, optimize: std.builtin.OptimizeMode) []const []const
     flags.appendSlice(b.allocator, &.{
         "-fexceptions",
         "-fcxx-exceptions",
+        "-fms-extensions",
         "-DWIN32_LEAN_AND_MEAN",
         "-D_WIN32_WINNT=0x501",
     }) catch @panic("OOM");
@@ -122,8 +123,8 @@ fn getCCFlags(b: *std.Build, optimize: std.builtin.OptimizeMode) []const []const
         flags.append(b.allocator, "-DDETOUR_DEBUG=0") catch @panic("OOM");
     }
     // The Detours library uses arithmatic operations on null pointers when iterating,
-    // which causes undefined behavior. But in practice it's fine, since the library also
-    // performs checks to ensure that the pointer is not null before dereferencing it.
+    // which can cause undefined behavior if not properly handled. But it's fine for this
+    // scenario since the library uses `__try`/`__except` SEH exception handling.
     // But the arithmatic operations upsets the sanitizer, so we disable it.
     // Eg. https://github.com/microsoft/Detours/blob/9764cebcb1a75940e68fa83d6730ffaf0f669401/src/modules.cpp#L251
     flags.append(b.allocator, "-fno-sanitize=undefined") catch @panic("OOM");
@@ -137,6 +138,7 @@ fn getTestCCFlags(b: *std.Build, optimize: std.builtin.OptimizeMode) []const []c
     flags.appendSlice(b.allocator, &.{
         "-fexceptions",
         "-fcxx-exceptions",
+        "-fms-extensions",
         "-w", // Disable warnings
         "-DCATCH_CONFIG_NO_WINDOWS_SEH",
     }) catch @panic("OOM");
